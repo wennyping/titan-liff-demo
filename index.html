@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>工地進度記錄</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap" rel="stylesheet">
+<script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<style>
+:root{
+  --gold:#F2C94C; --coral:#E8795A; --teal:#4ABFB5;
+  --cream:#FAF7F0; --green:#7DC67A; --sky:#6ABDE6; --dark:#4A3728;
+  --line:rgba(74,55,40,.12);
+  --line-green:#06C755;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+body{font-family:"Noto Sans TC",sans-serif;color:var(--dark);
+  background:
+    radial-gradient(120% 80% at 10% -10%, rgba(242,201,76,.18), transparent 60%),
+    radial-gradient(120% 80% at 100% 0%, rgba(74,191,181,.15), transparent 55%),
+    var(--cream);
+  min-height:100vh;display:flex;justify-content:center;padding:18px 12px 40px;}
+.phone{width:100%;max-width:430px;height:90vh;background:var(--cream);
+  border-radius:30px;box-shadow:0 24px 60px rgba(74,55,40,.18);
+  overflow:hidden;position:relative;display:flex;flex-direction:column;
+  border:1px solid rgba(74,55,40,.06);}
+.screen{display:none;flex-direction:column;flex:1;min-height:0;}
+.screen.on{display:flex;}
+
+/* LOADING */
+#screenLoading{justify-content:center;align-items:center;text-align:center;padding:40px;}
+.spin{width:46px;height:46px;border-radius:50%;border:5px solid rgba(74,55,40,.12);
+  border-top-color:var(--gold);animation:sp 1s linear infinite;margin-bottom:18px;}
+@keyframes sp{to{transform:rotate(360deg)}}
+#loadMsg{font-size:14px;font-weight:700;opacity:.6;line-height:1.8;}
+.retryBtn{margin-top:18px;padding:12px 28px;border:none;border-radius:14px;background:var(--dark);
+  color:var(--cream);font-family:inherit;font-size:14px;font-weight:900;cursor:pointer;display:none;}
+
+/* LOGIN */
+#screenLogin{padding:40px 28px;justify-content:center;text-align:center;overflow:auto;
+  background:radial-gradient(130% 60% at 50% 0%, rgba(242,201,76,.25), transparent 60%);}
+.logo{font-size:13px;font-weight:700;letter-spacing:.15em;opacity:.6;}
+.hero{font-size:64px;margin:18px 0 6px;}
+#screenLogin h1{font-size:26px;font-weight:900;margin:0 0 4px;}
+#screenLogin p{font-size:13px;opacity:.6;margin:0 0 32px;line-height:1.6;}
+.lineBtn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;
+  padding:16px;border:none;border-radius:16px;background:var(--line-green);color:#fff;
+  font-family:inherit;font-size:16px;font-weight:900;cursor:pointer;box-shadow:0 8px 20px rgba(6,199,85,.3);}
+.lineBtn:active{transform:scale(.99);}
+.or{display:flex;align-items:center;gap:12px;margin:22px 0;opacity:.4;font-size:12px;font-weight:700;}
+.or::before,.or::after{content:"";flex:1;height:1px;background:var(--dark);opacity:.3;}
+.pinBtn{width:100%;padding:15px;border:none;border-radius:16px;background:var(--dark);
+  color:var(--cream);font-family:inherit;font-size:15px;font-weight:900;cursor:pointer;}
+.demohint{margin-top:26px;font-size:11px;opacity:.45;line-height:1.6;}
+
+/* SITES */
+#screenSites{padding:26px 22px;overflow:auto;}
+.sbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;}
+.hi{font-size:13px;opacity:.6;}
+.hi b{display:block;font-size:20px;font-weight:900;opacity:1;margin-top:2px;}
+.avatar{width:42px;height:42px;border-radius:50%;background:var(--teal);color:#fff;
+  display:flex;align-items:center;justify-content:center;font-weight:900;font-size:16px;overflow:hidden;}
+.avatar img{width:100%;height:100%;object-fit:cover;}
+.sectit{font-size:13px;font-weight:700;opacity:.55;margin:22px 0 12px;}
+.scard{background:#fff;border:1px solid var(--line);border-radius:20px;padding:16px 18px;
+  margin-bottom:14px;cursor:pointer;transition:.15s;box-shadow:0 6px 18px rgba(74,55,40,.05);}
+.scard:active{transform:scale(.98);}
+.scard h3{font-size:18px;font-weight:900;margin:0;}
+.scard .addr{font-size:12px;opacity:.55;margin:3px 0 12px;}
+.smeta{display:flex;gap:14px;font-size:11.5px;font-weight:700;opacity:.7;margin-bottom:10px;}
+.smeta span::before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;
+  background:var(--coral);margin-right:5px;vertical-align:middle;}
+.sbarmini{height:7px;border-radius:20px;background:rgba(74,55,40,.08);overflow:hidden;}
+.sbarmini>i{display:block;height:100%;background:linear-gradient(90deg,var(--coral),var(--green));border-radius:20px;}
+
+/* MAIN */
+header{padding:16px 18px 12px;background:linear-gradient(135deg,var(--gold),#f6d878);flex:none;}
+.brandrow{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.back{font-size:12px;font-weight:700;background:rgba(255,255,255,.55);color:var(--dark);
+  padding:6px 11px;border-radius:20px;cursor:pointer;white-space:nowrap;}
+.who{font-size:11px;font-weight:700;background:rgba(255,255,255,.55);color:var(--dark);
+  padding:5px 10px;border-radius:20px;display:flex;align-items:center;gap:5px;}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 0 3px rgba(125,198,122,.35);}
+.proj{font-size:12px;font-weight:700;letter-spacing:.04em;color:var(--dark);opacity:.75;margin-top:10px;}
+h1{font-size:20px;font-weight:900;margin:2px 0 0;}
+.progwrap{margin-top:12px;}
+.progmeta{display:flex;justify-content:space-between;font-size:11px;font-weight:700;margin-bottom:5px;}
+.progbar{height:9px;border-radius:20px;background:rgba(255,255,255,.5);overflow:hidden;}
+.progfill{height:100%;width:0;background:linear-gradient(90deg,var(--coral),var(--green));border-radius:20px;transition:width .5s cubic-bezier(.2,.8,.2,1);}
+
+.body{flex:1;min-height:0;overflow-y:auto;}
+.view{display:none;}
+.view.on{display:block;}
+
+.tabs{display:flex;gap:8px;padding:12px 18px 4px;}
+.tab{flex:1;text-align:center;font-size:13px;font-weight:700;padding:9px 0;border-radius:14px;
+  background:rgba(74,55,40,.06);color:var(--dark);cursor:pointer;transition:.2s;}
+.tab.on{background:var(--dark);color:var(--cream);}
+.legend{display:flex;gap:7px;flex-wrap:wrap;padding:10px 18px 4px;}
+.lg{display:flex;align-items:center;gap:5px;font-size:10.5px;font-weight:500;opacity:.85;}
+.sw{width:13px;height:13px;border-radius:5px;border:1px solid var(--line);}
+.gridscroll{overflow-x:auto;padding:8px 12px 14px;-webkit-overflow-scrolling:touch;}
+table{border-collapse:separate;border-spacing:4px;}
+th,td{padding:0;}
+.colhd{font-size:10.5px;font-weight:700;color:var(--dark);opacity:.7;text-align:center;
+  min-width:42px;padding:0 2px 4px;line-height:1.15;height:34px;vertical-align:bottom;}
+.flhd{position:sticky;left:0;z-index:2;background:var(--cream);font-size:10.5px;font-weight:700;
+  opacity:.7;min-width:38px;padding-right:4px;text-align:right;}
+.flhd.corner{opacity:1;}
+.cell{width:42px;height:36px;border-radius:9px;border:1.5px solid var(--line);
+  background:#FFFDF8;cursor:pointer;position:relative;transition:transform .12s,background .25s;}
+.cell:active{transform:scale(.88);}
+.cell.zero{border-style:dashed;}
+.cell .dt{position:absolute;bottom:1px;right:3px;font-size:7.5px;font-weight:700;color:rgba(74,55,40,.7);}
+.cell .ck{position:absolute;top:3px;left:5px;font-size:13px;color:#fff;line-height:1;}
+.note{font-size:10.5px;line-height:1.6;text-align:center;color:var(--dark);opacity:.55;padding:4px 24px 18px;}
+.note b{color:var(--teal);opacity:1;}
+
+/* ── 今日回報 ── */
+.logwrap{padding:16px 18px 20px;}
+.logdate{font-size:13px;font-weight:700;opacity:.6;margin-bottom:10px;}
+.logcard{background:#fff;border:1px solid var(--line);border-radius:20px;padding:18px;margin-bottom:16px;box-shadow:0 6px 18px rgba(74,55,40,.05);}
+.flabel{font-size:14px;font-weight:900;margin-bottom:10px;}
+.stepper{display:flex;align-items:center;justify-content:center;gap:18px;margin-bottom:6px;}
+.stepper button{width:46px;height:46px;border-radius:14px;border:none;background:var(--cream);
+  font-size:26px;font-weight:900;color:var(--dark);cursor:pointer;font-family:inherit;}
+.stepper button:active{transform:scale(.92);}
+.stepper .num{font-size:38px;font-weight:900;min-width:64px;text-align:center;}
+.stepper .unit{font-size:14px;font-weight:700;opacity:.5;}
+.wbtns{display:flex;gap:10px;}
+.wbtn{flex:1;padding:14px 0;border-radius:16px;border:2px solid var(--line);background:#fff;
+  cursor:pointer;text-align:center;font-family:inherit;transition:.15s;}
+.wbtn:active{transform:scale(.97);}
+.wbtn .we{font-size:30px;display:block;}
+.wbtn .wt{font-size:13px;font-weight:700;margin-top:2px;}
+.wbtn.sun.on{background:#FEF3D0;border-color:var(--gold);}
+.wbtn.cloud.on{background:#E8F0F4;border-color:var(--sky);}
+.wbtn.rain.on{background:#DCE9F6;border-color:#5b8fc7;}
+.normalbtn{display:inline-block;font-size:12px;font-weight:700;background:rgba(125,198,122,.18);
+  color:#4e8a4b;padding:6px 13px;border-radius:20px;cursor:pointer;margin-bottom:10px;}
+textarea{width:100%;border:2px solid var(--line);border-radius:14px;padding:12px;font-family:inherit;
+  font-size:14px;color:var(--dark);resize:none;background:#fff;}
+.saveLog{width:100%;margin-top:6px;padding:15px;border:none;border-radius:16px;background:var(--dark);
+  color:var(--cream);font-size:16px;font-weight:900;cursor:pointer;font-family:inherit;}
+.saveLog:active{transform:scale(.99);}
+.saveLog:disabled{opacity:.5;}
+.saved{text-align:center;font-size:12px;font-weight:700;color:#4e8a4b;margin-top:8px;height:14px;}
+.saved.err{color:var(--coral);}
+
+/* stats */
+.stathead{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px;}
+.stathead b{font-size:16px;font-weight:900;}
+.stathead span{font-size:12px;font-weight:700;opacity:.5;}
+.statgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.stat{border-radius:15px;padding:13px 15px;}
+.stat .v{font-size:28px;font-weight:900;line-height:1;}
+.stat .l{font-size:12px;font-weight:700;margin-top:5px;opacity:.7;}
+.stat.sun{background:#FEF3D0;}.stat.rain{background:#DCE9F6;}
+.stat.work{background:#E3F1E2;}.stat.stop{background:#F7E0D9;}
+.gendoc{width:100%;margin-top:14px;padding:13px;border:2px dashed var(--coral);border-radius:14px;
+  background:rgba(232,121,90,.06);color:var(--coral);font-size:14px;font-weight:900;cursor:pointer;font-family:inherit;}
+.docout{display:none;margin-top:12px;background:var(--cream);border-radius:14px;padding:15px;
+  font-size:13px;line-height:1.8;border-left:3px solid var(--coral);}
+.docout.on{display:block;}
+.docout b{display:block;margin-bottom:6px;}
+
+/* history */
+.loglist{margin-top:4px;}
+.logrow{display:flex;align-items:center;gap:12px;background:#fff;border:1px solid var(--line);
+  border-radius:14px;padding:11px 14px;margin-bottom:8px;}
+.logrow .d{font-size:13px;font-weight:900;min-width:46px;}
+.logrow .w{font-size:20px;}
+.logrow .p{font-size:13px;font-weight:700;}
+.logrow .x{margin-left:auto;font-size:11px;font-weight:700;color:var(--coral);
+  background:rgba(232,121,90,.12);padding:3px 9px;border-radius:20px;}
+
+/* bottom nav */
+.bottomnav{flex:none;display:flex;border-top:1px solid var(--line);background:var(--cream);}
+.navbtn{flex:1;text-align:center;padding:11px 0 13px;cursor:pointer;color:var(--dark);opacity:.45;
+  font-size:11px;font-weight:700;transition:.15s;}
+.navbtn .ni{font-size:22px;display:block;margin-bottom:2px;}
+.navbtn.on{opacity:1;color:var(--coral);}
+
+/* sheet */
+.scrim{position:fixed;inset:0;background:rgba(74,55,40,.35);opacity:0;pointer-events:none;transition:.25s;z-index:10;}
+.scrim.on{opacity:1;pointer-events:auto;}
+.sheet{position:fixed;left:50%;bottom:0;transform:translate(-50%,110%);
+  width:100%;max-width:430px;background:var(--cream);border-radius:26px 26px 0 0;
+  padding:10px 20px calc(20px + env(safe-area-inset-bottom));z-index:11;
+  transition:transform .3s cubic-bezier(.2,.8,.2,1);box-shadow:0 -10px 40px rgba(74,55,40,.2);}
+.sheet.on{transform:translate(-50%,0);}
+.grab{width:42px;height:5px;border-radius:10px;background:var(--line);margin:4px auto 14px;}
+.shead{font-size:13px;font-weight:700;opacity:.7;}
+.shead b{font-size:20px;font-weight:900;opacity:1;display:block;margin-top:2px;}
+.opts{display:flex;flex-direction:column;gap:9px;margin:16px 0 6px;}
+.opt{display:flex;align-items:center;gap:12px;padding:13px 15px;border-radius:15px;
+  border:2px solid var(--line);background:#fff;cursor:pointer;font-size:15px;font-weight:700;transition:.15s;}
+.opt:active{transform:scale(.98);}
+.opt .obox{width:22px;height:22px;border-radius:7px;flex:0 0 auto;border:1px solid var(--line);}
+.opt.sel{border-color:var(--dark);box-shadow:0 4px 14px rgba(74,55,40,.12);}
+.opt.sel::after{content:"✓";margin-left:auto;font-weight:900;color:var(--green);font-size:18px;}
+.daterow{display:flex;align-items:center;gap:10px;margin:14px 0 4px;font-size:13px;font-weight:700;}
+.daterow input{flex:1;font-family:inherit;font-size:15px;padding:10px 12px;border-radius:12px;border:2px solid var(--line);background:#fff;color:var(--dark);}
+.save{width:100%;margin-top:16px;padding:15px;border:none;border-radius:16px;background:var(--dark);color:var(--cream);font-size:16px;font-weight:900;cursor:pointer;font-family:inherit;}
+.save:disabled{opacity:.5;}
+.toast{position:fixed;top:18px;left:50%;transform:translateX(-50%);background:var(--dark);color:var(--cream);
+  font-size:13px;font-weight:700;padding:10px 20px;border-radius:20px;z-index:30;opacity:0;transition:.3s;pointer-events:none;}
+.toast.on{opacity:1;}
+</style>
+</head>
+<body>
+<div class="phone">
+
+  <!-- ⓪ LOADING -->
+  <section class="screen on" id="screenLoading">
+    <div class="spin"></div>
+    <div id="loadMsg">正在連線工務系統…</div>
+    <button class="retryBtn" id="retryBtn">重試</button>
+  </section>
+
+  <!-- ① LOGIN（瀏覽器測試 / LIFF 未登入時顯示） -->
+  <section class="screen" id="screenLogin">
+    <div class="logo">鈦坦技術 · 工務系統</div>
+    <div class="hero">🏗️</div>
+    <h1>工地進度記錄</h1>
+    <p>現場即時記錄施工進度<br>資料自動同步 Notion，主管隨時掌握</p>
+    <button class="lineBtn" id="lineBtn">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff"><path d="M12 2C6.48 2 2 5.64 2 10.1c0 4 3.55 7.35 8.35 7.98.32.07.77.21.88.49.1.25.07.64.03.9l-.14.85c-.04.25-.2.99.87.54s5.77-3.4 7.87-5.82C21.41 13.34 22 11.79 22 10.1 22 5.64 17.52 2 12 2z"/></svg>
+      以 LINE 登入
+    </button>
+    <div class="or">或</div>
+    <button class="pinBtn" id="guestBtn">訪客模式進入（測試用）</button>
+    <div class="demohint">在 LINE 內開啟會自動登入，不會看到此畫面</div>
+  </section>
+
+  <!-- ② SITES -->
+  <section class="screen" id="screenSites">
+    <div class="sbar">
+      <div class="hi">早安，<b id="userName">—</b></div>
+      <div class="avatar" id="userAvatar">—</div>
+    </div>
+    <div class="sectit">你負責的案場</div>
+    <div id="siteList"></div>
+  </section>
+
+  <!-- ③ MAIN -->
+  <section class="screen" id="screenMain">
+    <header>
+      <div class="brandrow">
+        <span class="back" id="backBtn">‹ 切換案場</span>
+        <span class="who"><span class="dot"></span><span id="whoName">—</span></span>
+      </div>
+      <div class="proj" id="projName">鈦坦技術 · —</div>
+      <h1 id="mainTitle">工地進度記錄</h1>
+      <div class="progwrap" id="progwrap">
+        <div class="progmeta"><span id="progLabel">—</span><span id="progPct">0%</span></div>
+        <div class="progbar"><div class="progfill" id="progFill"></div></div>
+      </div>
+    </header>
+
+    <div class="body">
+      <!-- 進度 view -->
+      <div class="view on" id="viewProgress">
+        <div class="tabs" id="tabs"></div>
+        <div class="legend" id="legend"></div>
+        <div class="gridscroll"><table id="grid"></table></div>
+        <div class="note">點任一格子即可記錄狀態，每次記錄即時同步進 <b>Notion</b>，並記下「誰、何時」記的。</div>
+      </div>
+
+      <!-- 今日回報 view -->
+      <div class="view" id="viewLog">
+        <div class="logwrap">
+          <div class="logdate" id="logDate">今日　—</div>
+
+          <div class="logcard">
+            <div class="flabel">👷 今日出班人數</div>
+            <div class="stepper">
+              <button id="minus">–</button>
+              <div><span class="num" id="people">8</span><span class="unit"> 人</span></div>
+              <button id="plus">＋</button>
+            </div>
+          </div>
+
+          <div class="logcard">
+            <div class="flabel">🌤️ 今日天氣</div>
+            <div class="wbtns" id="wbtns">
+              <div class="wbtn sun"   data-w="sun"><span class="we">☀️</span><span class="wt">晴</span></div>
+              <div class="wbtn cloud" data-w="cloud"><span class="we">⛅</span><span class="wt">陰</span></div>
+              <div class="wbtn rain"  data-w="rain"><span class="we">🌧️</span><span class="wt">雨</span></div>
+            </div>
+          </div>
+
+          <div class="logcard">
+            <div class="flabel">⚠️ 異常狀況</div>
+            <span class="normalbtn" id="normalBtn">今日正常，無異常</span>
+            <textarea id="issue" rows="2" placeholder="若有異常，簡述狀況（如：泥濘無法吊料）…"></textarea>
+          </div>
+
+          <button class="saveLog" id="saveLog">送出今日回報</button>
+          <div class="saved" id="savedMsg"></div>
+
+          <!-- 本月統計 -->
+          <div class="logcard" style="margin-top:18px;">
+            <div class="stathead"><b>本月出工統計</b><span id="statMonth">—</span></div>
+            <div class="statgrid">
+              <div class="stat sun"><div class="v" id="stSun">0</div><div class="l">☀️ 晴 / 陰天數</div></div>
+              <div class="stat rain"><div class="v" id="stRain">0</div><div class="l">🌧️ 雨天數</div></div>
+              <div class="stat work"><div class="v" id="stWork">0</div><div class="l">✅ 實際出工天</div></div>
+              <div class="stat stop"><div class="v" id="stStop">0</div><div class="l">⛔ 因雨停工天</div></div>
+            </div>
+            <button class="gendoc" id="genDoc">📄 生成「給業主的進度說明」</button>
+            <div class="docout" id="docOut"></div>
+          </div>
+
+          <!-- 歷史 -->
+          <div class="stathead" style="margin:6px 4px 10px;"><b>本月回報紀錄</b></div>
+          <div class="loglist" id="logList"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- bottom nav -->
+    <div class="bottomnav">
+      <div class="navbtn on" data-v="viewProgress"><span class="ni">📊</span>施工進度</div>
+      <div class="navbtn" data-v="viewLog"><span class="ni">📝</span>今日回報</div>
+    </div>
+  </section>
+
+</div>
+
+<!-- sheet（進度用） -->
+<div class="scrim" id="scrim"></div>
+<div class="sheet" id="sheet">
+  <div class="grab"></div>
+  <div class="shead">記錄施工狀態<b id="sheetTitle">—</b></div>
+  <div class="opts" id="opts"></div>
+  <div class="daterow">📅 完成日期 <input type="date" id="dateInput"></div>
+  <button class="save" id="saveBtn">儲存記錄</button>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ════════════ 設定 ════════════
+ * LIFF_ID：到 LINE Developers Console 建立 LIFF app 後填入（如 "2001234567-abcdEFGH"）
+ * 留空 = 跳過 LINE 登入，可在一般瀏覽器測試（訪客模式）
+ */
+const CONFIG = {
+  LIFF_ID: "",
+  API_BASE: "https://wenny-n8n-prod.zeabur.app/webhook",
+};
+
+/* ════════════ 全域狀態（全部來自 Notion，前端不寫死任何案場） ════════════ */
+let USER = { name: "現場人員", pic: "" };
+let SITES = {};    // siteId -> {id,name,addr,floors[],works[],pm,cols:[{id,name}]}
+let MODULES = {};  // moduleId -> {id,name,states:[{id,v,name,hex}],done}
+let CELLS = {};    // siteId|workId|floor|colId -> {v,date,ts}
+let DAILY = [];    // [{date,siteId,people,weather,issue,by}]
+
+let curSiteId=null, curWork=null, cur=null, pendingState=0;
+let logPeople=8, logWeather="sun";
+const W2NOTION = {sun:"☀️ 晴", cloud:"⛅ 陰", rain:"🌧️ 雨"};
+const WMETA = {sun:{e:"☀️",t:"晴"}, cloud:{e:"⛅",t:"陰"}, rain:{e:"🌧️",t:"雨"}};
+const notionW = w => w.includes("雨") ? "rain" : (w.includes("陰") ? "cloud" : "sun");
+
+const $=id=>document.getElementById(id);
+const todayStr=()=>{const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");};
+const cellKey=(s,w,f,c)=>`${s}|${w}|${f}|${c}`;
+function show(id){document.querySelectorAll(".screen").forEach(s=>s.classList.remove("on"));$(id).classList.add("on");}
+function toast(msg){const t=$("toast");t.textContent=msg;t.classList.add("on");setTimeout(()=>t.classList.remove("on"),2200);}
+
+/* ════════════ 啟動流程：LIFF 登入 → 載入 Notion 設定 ════════════ */
+async function boot(){
+  show("screenLoading");
+  if (CONFIG.LIFF_ID) {
+    try {
+      await liff.init({ liffId: CONFIG.LIFF_ID });
+      if (!liff.isLoggedIn()) { liff.login(); return; }
+      const p = await liff.getProfile();
+      USER.name = p.displayName || "現場人員";
+      USER.pic = p.pictureUrl || "";
+    } catch (e) {
+      console.warn("LIFF 初始化失敗，顯示登入畫面", e);
+      show("screenLogin"); return;
+    }
+  } else if (!sessionStorage.getItem("guest")) {
+    show("screenLogin"); return;
+  } else {
+    USER.name = "訪客（測試）";
+  }
+  await loadData();
+}
+
+async function loadData(){
+  show("screenLoading");
+  $("loadMsg").textContent="正在從 Notion 載入案場設定…";
+  $("retryBtn").style.display="none";
+  try {
+    const res = await fetch(CONFIG.API_BASE + "/eng-bootstrap");
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    const d = await res.json();
+
+    MODULES = {}; SITES = {}; CELLS = {};
+    d.modules.forEach(m => {
+      if (!m.states.length) return;
+      MODULES[m.id] = { ...m, done: Math.max(...m.states.map(s => s.v)) };
+    });
+    d.sites.forEach(s => {
+      SITES[s.id] = { ...s, works: s.works.filter(w => MODULES[w]),
+                      cols: d.columns.filter(c => c.siteId === s.id) };
+    });
+    d.records.forEach(r => {
+      const k = cellKey(r.siteId, r.workId, r.floor, r.colId);
+      const prev = CELLS[k];
+      if (!prev || (r.ts || "") > (prev.ts || ""))
+        CELLS[k] = { v: r.stateOrder ?? 0, date: r.date, ts: r.ts };
+    });
+    DAILY = d.daily;
+
+    $("userName").textContent = USER.name;
+    const av = $("userAvatar");
+    av.innerHTML = USER.pic ? `<img src="${USER.pic}" alt="">` : (USER.name[0] || "工");
+    buildSiteList();
+    show("screenSites");
+  } catch (e) {
+    console.error(e);
+    $("loadMsg").innerHTML = "連線失敗 😢<br>請確認網路後重試";
+    $("retryBtn").style.display = "inline-block";
+  }
+}
+$("retryBtn").onclick = loadData;
+$("lineBtn").onclick = () => {
+  if (CONFIG.LIFF_ID) { liff.login(); }
+  else { sessionStorage.setItem("guest","1"); boot(); }
+};
+$("guestBtn").onclick = () => { sessionStorage.setItem("guest","1"); boot(); };
+
+/* ════════════ API 寫入 ════════════ */
+async function apiPost(path, payload){
+  const res = await fetch(CONFIG.API_BASE + path, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) throw new Error("HTTP " + res.status);
+  return res.json();
+}
+
+/* ════════════ 案場清單 ════════════ */
+function siteProgress(id){
+  const S = SITES[id];
+  let total = 0, done = 0;
+  S.works.forEach(w => {
+    const M = MODULES[w];
+    S.floors.forEach(f => S.cols.forEach(c => {
+      total++;
+      const rec = CELLS[cellKey(id, w, f, c.id)];
+      if (rec && rec.v === M.done) done++;
+    }));
+  });
+  return total ? Math.round(done / total * 100) : 0;
+}
+function buildSiteList(){
+  const L=$("siteList"); L.innerHTML="";
+  Object.values(SITES).forEach(S=>{
+    const p=siteProgress(S.id);
+    L.insertAdjacentHTML("beforeend",
+     `<div class="scard" data-id="${S.id}"><h3>${S.name}</h3><div class="addr">${S.addr}</div>
+      <div class="smeta"><span>${S.floors.length} 層樓</span><span>${S.cols.length} 支柱</span><span>${S.works.length} 個工項</span></div>
+      <div class="sbarmini"><i style="width:${p}%"></i></div></div>`);
+  });
+  L.querySelectorAll(".scard").forEach(el=>el.onclick=()=>enterSite(el.dataset.id));
+}
+
+/* ════════════ 進入案場 ════════════ */
+function enterSite(id){
+  curSiteId=id; const S=SITES[id]; curWork=S.works[0];
+  $("projName").textContent="鈦坦技術 · "+S.name;
+  $("whoName").textContent=USER.name;
+  switchView("viewProgress");
+  buildTabs();buildLegend();buildGrid();updateProgress();
+  loadLogToday();renderStats();renderLogList();
+  show("screenMain");
+}
+$("backBtn").onclick=()=>{buildSiteList();show("screenSites");};
+
+function switchView(v){
+  document.querySelectorAll(".view").forEach(x=>x.classList.remove("on"));$(v).classList.add("on");
+  document.querySelectorAll(".navbtn").forEach(b=>b.classList.toggle("on",b.dataset.v===v));
+  $("progwrap").style.display = v==="viewProgress" ? "block":"none";
+  $("mainTitle").textContent = v==="viewProgress" ? "工地進度記錄":"每日施工日誌";
+}
+document.querySelectorAll(".navbtn").forEach(b=>b.onclick=()=>switchView(b.dataset.v));
+
+/* ════════════ 進度矩陣（樓層/柱位/狀態色全來自 Notion） ════════════ */
+function stateOf(workId, v){ return MODULES[workId].states.find(s=>s.v===v); }
+function buildTabs(){
+  const T=$("tabs");T.innerHTML="";
+  SITES[curSiteId].works.forEach(w=>T.insertAdjacentHTML("beforeend",
+    `<div class="tab ${w===curWork?'on':''}" data-w="${w}">${MODULES[w].name}</div>`));
+  T.querySelectorAll(".tab").forEach(t=>t.onclick=()=>{curWork=t.dataset.w;
+    T.querySelectorAll(".tab").forEach(x=>x.classList.remove("on"));t.classList.add("on");
+    buildLegend();buildGrid();updateProgress();});
+}
+function buildLegend(){
+  const L=$("legend");L.innerHTML="";
+  MODULES[curWork].states.forEach(s=>{if(s.v===0)return;
+    L.insertAdjacentHTML("beforeend",`<span class="lg"><span class="sw" style="background:${s.hex}"></span>${s.name}</span>`);});
+}
+function buildGrid(){
+  const S=SITES[curSiteId],M=MODULES[curWork],T=$("grid");T.innerHTML="";
+  let head="<tr><th class='flhd corner'></th>";
+  S.cols.forEach(c=>head+=`<th class="colhd">${c.name}</th>`);head+="</tr>";
+  T.insertAdjacentHTML("beforeend",head);
+  S.floors.forEach(f=>{
+    let row=`<tr><th class="flhd">${f}</th>`;
+    S.cols.forEach(c=>{
+      const rec=CELLS[cellKey(curSiteId,curWork,f,c.id)];
+      const v=rec&&stateOf(curWork,rec.v)?rec.v:0;
+      const st=stateOf(curWork,v)||M.states[0];
+      const isDone=v===M.done&&v>0;
+      row+=`<td><div class="cell ${v===0?'zero':''}" style="${v>0?`background:${st.hex};border-color:transparent;`:''}" data-f="${f}" data-c="${c.id}">${isDone?'<span class="ck">✓</span>':''}${rec&&rec.date&&v>0?`<span class="dt">${rec.date.slice(5)}</span>`:''}</div></td>`;
+    });
+    row+="</tr>";T.insertAdjacentHTML("beforeend",row);
+  });
+  T.querySelectorAll(".cell").forEach(el=>el.onclick=()=>openSheet(el.dataset.f,el.dataset.c));
+}
+function updateProgress(){
+  const S=SITES[curSiteId],M=MODULES[curWork];
+  const t=S.floors.length*S.cols.length;let d=0;
+  S.floors.forEach(f=>S.cols.forEach(c=>{
+    const rec=CELLS[cellKey(curSiteId,curWork,f,c.id)];
+    if(rec&&rec.v===M.done)d++;
+  }));
+  const pct=t?Math.round(d/t*100):0;
+  $("progFill").style.width=pct+"%";$("progPct").textContent=pct+"%";
+  $("progLabel").textContent=M.name+"進度";
+}
+
+/* ════════════ 狀態記錄 sheet → POST eng-record ════════════ */
+function openSheet(f,colId){
+  cur={f,colId};
+  const rec=CELLS[cellKey(curSiteId,curWork,f,colId)];
+  pendingState=rec?rec.v:0;
+  const colName=SITES[curSiteId].cols.find(c=>c.id===colId)?.name||"";
+  $("sheetTitle").textContent=`${f} · ${colName}`;
+  $("dateInput").value=(rec&&rec.date)||todayStr();
+  const O=$("opts");O.innerHTML="";
+  MODULES[curWork].states.forEach(s=>O.insertAdjacentHTML("beforeend",
+    `<div class="opt ${s.v===pendingState?'sel':''}" data-v="${s.v}"><span class="obox" style="background:${s.hex}"></span>${s.name}</div>`));
+  O.querySelectorAll(".opt").forEach(o=>o.onclick=()=>{pendingState=+o.dataset.v;
+    O.querySelectorAll(".opt").forEach(x=>x.classList.remove("sel"));o.classList.add("sel");});
+  $("scrim").classList.add("on");$("sheet").classList.add("on");
+}
+function closeSheet(){$("scrim").classList.remove("on");$("sheet").classList.remove("on");}
+$("scrim").onclick=closeSheet;
+
+$("saveBtn").onclick=async()=>{
+  if(!cur)return;
+  const S=SITES[curSiteId],M=MODULES[curWork];
+  const st=stateOf(curWork,pendingState);
+  const col=S.cols.find(c=>c.id===cur.colId);
+  const date=pendingState===0?"":$("dateInput").value;
+  const k=cellKey(curSiteId,curWork,cur.f,cur.colId);
+  const prev=CELLS[k];
+  // 樂觀更新
+  CELLS[k]={v:pendingState,date,ts:new Date().toISOString()};
+  closeSheet();buildGrid();updateProgress();
+  $("saveBtn").disabled=true;
+  try{
+    await apiPost("/eng-record",{
+      siteId:S.id, siteName:S.name,
+      workId:M.id, workName:M.name,
+      floor:cur.f, colId:col.id, colName:col.name,
+      stateId:st.id, stateName:st.name, stateOrder:st.v,
+      date:date||todayStr(), by:USER.name,
+    });
+    toast("✓ 已同步進 Notion");
+  }catch(e){
+    console.error(e);
+    if(prev)CELLS[k]=prev;else delete CELLS[k];
+    buildGrid();updateProgress();
+    toast("⚠️ 同步失敗，請再試一次");
+  }finally{$("saveBtn").disabled=false;}
+};
+
+/* ════════════ 今日回報 → POST eng-daily ════════════ */
+function setWeather(w){logWeather=w;document.querySelectorAll(".wbtn").forEach(b=>b.classList.toggle("on",b.dataset.w===w));}
+$("wbtns").querySelectorAll(".wbtn").forEach(b=>b.onclick=()=>setWeather(b.dataset.w));
+$("minus").onclick=()=>{logPeople=Math.max(0,logPeople-1);$("people").textContent=logPeople;};
+$("plus").onclick=()=>{logPeople++;$("people").textContent=logPeople;};
+$("normalBtn").onclick=()=>{$("issue").value="";$("issue").placeholder="✓ 已標記今日正常";};
+
+function findLog(siteId,date){return DAILY.find(l=>l.siteId===siteId&&l.date===date);}
+function loadLogToday(){
+  const r=findLog(curSiteId,todayStr());
+  logPeople=r?r.people:8;logWeather=r?notionW(r.weather):"sun";
+  $("people").textContent=logPeople;setWeather(logWeather);
+  $("issue").value=r?r.issue:"";
+  $("logDate").textContent="今日　"+todayStr()+(r?"（已回報，可修改）":"");
+}
+$("saveLog").onclick=async()=>{
+  const S=SITES[curSiteId];
+  const payload={
+    siteId:S.id, siteName:S.name, date:todayStr(),
+    people:logPeople, weather:W2NOTION[logWeather],
+    issue:$("issue").value.trim(), by:USER.name,
+  };
+  $("saveLog").disabled=true;
+  $("savedMsg").classList.remove("err");$("savedMsg").textContent="同步中…";
+  try{
+    await apiPost("/eng-daily",payload);
+    const idx=DAILY.findIndex(l=>l.siteId===S.id&&l.date===payload.date);
+    const local={date:payload.date,siteId:S.id,people:payload.people,weather:payload.weather,issue:payload.issue,by:USER.name};
+    if(idx>=0)DAILY[idx]=local;else DAILY.push(local);
+    $("savedMsg").textContent="✓ 已送出，並同步進 Notion";
+    renderStats();renderLogList();
+    $("logDate").textContent="今日　"+payload.date+"（已回報，可修改）";
+    setTimeout(()=>$("savedMsg").textContent="",2500);
+  }catch(e){
+    console.error(e);
+    $("savedMsg").classList.add("err");$("savedMsg").textContent="⚠️ 同步失敗，請再試一次";
+  }finally{$("saveLog").disabled=false;}
+};
+
+/* ════════════ 本月統計 / 歷史 ════════════ */
+function monthLogs(){
+  const now=new Date(),ym=now.getFullYear()+"-"+String(now.getMonth()+1).padStart(2,"0");
+  return DAILY.filter(l=>l.siteId===curSiteId&&(l.date||"").startsWith(ym))
+              .sort((a,b)=>b.date.localeCompare(a.date));
+}
+function renderStats(){
+  const logs=monthLogs();let sun=0,rain=0,work=0,stop=0;
+  logs.forEach(l=>{const w=notionW(l.weather||"");
+    if(w==="rain"){rain++;if(l.people===0)stop++;}else sun++;
+    if(l.people>0)work++;});
+  $("stSun").textContent=sun;$("stRain").textContent=rain;
+  $("stWork").textContent=work;$("stStop").textContent=stop;
+  $("statMonth").textContent=(new Date().getMonth()+1)+" 月";
+  $("docOut").classList.remove("on");
+}
+$("genDoc").onclick=()=>{
+  const logs=monthLogs();let stop=0,work=0;const rainDays=[];
+  logs.forEach(l=>{const w=notionW(l.weather||"");
+    if(w==="rain"&&l.people===0){stop++;rainDays.push(l.date.slice(5));}
+    if(l.people>0)work++;});
+  const M=new Date().getMonth()+1;
+  $("docOut").innerHTML=`<b>致 業主：${M} 月施工進度說明</b>
+    本月共記錄 ${logs.length} 個日曆天，其中因降雨無法施工 <b style="color:var(--coral)">${stop}</b> 天
+    （日期：${rainDays.join("、")||"—"}），實際有效出工 <b style="color:#4e8a4b">${work}</b> 天。
+    受天候影響，本月進度順延約 ${stop} 個工作天，後續將視天候調度補班，特此說明。
+    <span style="display:block;margin-top:8px;opacity:.5;font-size:11px;">＊系統依每日回報自動生成，資料來源：Notion 每日日誌</span>`;
+  $("docOut").classList.add("on");
+};
+function renderLogList(){
+  const L=$("logList"),logs=monthLogs().slice(0,10);L.innerHTML="";
+  if(!logs.length){L.innerHTML='<div style="opacity:.5;font-size:13px;padding:6px;">本月尚無回報紀錄</div>';return;}
+  logs.forEach(l=>{const w=notionW(l.weather||"");
+    L.insertAdjacentHTML("beforeend",
+    `<div class="logrow"><span class="d">${l.date.slice(5)}</span><span class="w">${WMETA[w].e}</span>
+     <span class="p">${l.people} 人出班</span>${l.issue?`<span class="x">異常</span>`:""}</div>`);});
+}
+
+boot();
+</script>
+</body>
+</html>
