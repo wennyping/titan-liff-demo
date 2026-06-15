@@ -360,7 +360,7 @@ const CONFIG = {
 };
 
 /* ════════════ 全域狀態 ════════════ */
-let USER = { name: "現場人員", pic: "", isGuest: false };
+let USER = { name: "現場人員", pic: "", id: "", isGuest: false };
 let SITES = {};
 let MODULES = {};
 let CELLS = {};
@@ -392,6 +392,7 @@ async function boot(){
       const p = await liff.getProfile();
       USER.name = p.displayName || "現場人員";
       USER.pic = p.pictureUrl || "";
+      USER.id = p.userId || "";
       USER.isGuest = false;
     } catch (e) {
       console.warn("LIFF 初始化失敗，顯示登入畫面", e);
@@ -483,7 +484,10 @@ function buildSiteList(){
   // 訪客模式顯示全部；LIFF 登入則只顯示負責人員包含自己的案場
   let display = allSites;
   if (!USER.isGuest) {
-    const mine = allSites.filter(S => (S.members||[]).includes(USER.name));
+    const mine = allSites.filter(S =>
+      (USER.id && (S.memberUserIds||[]).includes(USER.id))  // 主：靠 LINE userId 比對（穩定，不受改暱稱影響）
+      || (S.members||[]).includes(USER.name)                 // 過渡備援：靠姓名（待所有員工都有 userId 後可移除此行）
+    );
     if (mine.length > 0) {
       display = mine;
     } else {
