@@ -576,18 +576,27 @@ function updateProgress(){
 
 /* ════════════ 長按多選 ════════════ */
 function attachCellEvents(el){
-  // 長按 500ms 進入多選模式
-  el.addEventListener("touchstart", ()=>{
-    pressTimer = setTimeout(()=>{
+  // 長按 500ms 進入多選模式（pointer 事件，滑鼠＋觸控皆可）
+  let fired=false, sx=0, sy=0;
+  const cancel=()=>{if(pressTimer){clearTimeout(pressTimer);pressTimer=null;}};
+  el.addEventListener("pointerdown", e=>{
+    fired=false; if(selectMode) return;
+    sx=e.clientX; sy=e.clientY;
+    pressTimer=setTimeout(()=>{
+      pressTimer=null; fired=true;
       if(!selectMode) enterSelectMode();
       toggleCellSelect(el);
+      if(navigator.vibrate) navigator.vibrate(15);
     }, 500);
-  }, {passive:true});
-  el.addEventListener("touchend", ()=>clearTimeout(pressTimer));
-  el.addEventListener("touchmove", ()=>clearTimeout(pressTimer));
+  });
+  el.addEventListener("pointermove", e=>{
+    if(pressTimer && (Math.abs(e.clientX-sx)>8 || Math.abs(e.clientY-sy)>8)) cancel();
+  });
+  el.addEventListener("pointerup", cancel);
+  el.addEventListener("pointercancel", cancel);
 
   el.addEventListener("click", ()=>{
-    clearTimeout(pressTimer);
+    if(fired){fired=false;return;}   // 長按已處理，擋掉補發的 click
     if(selectMode){
       toggleCellSelect(el);
     } else {
