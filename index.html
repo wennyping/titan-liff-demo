@@ -148,6 +148,24 @@ textarea{width:100%;border:2px solid var(--line);border-radius:14px;padding:12px
 .saveLog:disabled{opacity:.5;}
 .saved{text-align:center;font-size:12px;font-weight:700;color:#4e8a4b;margin-top:8px;height:14px;}
 .saved.err{color:var(--coral);}
+/* 工地照片上傳 */
+.photoAdd{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:16px;
+  border:2px dashed var(--line);border-radius:16px;background:var(--cream);
+  font-size:15px;font-weight:900;color:var(--dark);cursor:pointer;}
+.photoAdd:active{transform:scale(.99);}
+.photoList{display:flex;flex-direction:column;gap:10px;margin-top:12px;}
+.photoItem{display:flex;gap:10px;align-items:flex-start;padding:10px;border:1px solid var(--line);
+  border-radius:14px;background:#fff;position:relative;}
+.photoItem.done{opacity:.5;}
+.photoItem .thumb{width:64px;height:64px;object-fit:cover;border-radius:10px;flex:none;}
+.photoItem .pmeta{flex:1;display:flex;flex-direction:column;gap:8px;min-width:0;padding-right:26px;}
+.photoItem .tagSel{width:100%;padding:9px 10px;border:2px solid var(--line);border-radius:12px;
+  font-family:inherit;font-size:13px;font-weight:700;background:#fff;color:var(--dark);}
+.photoItem .noteInp{width:100%;padding:9px 10px;border:2px solid var(--line);border-radius:12px;
+  font-family:inherit;font-size:13px;box-sizing:border-box;}
+.photoItem .tagSel:focus,.photoItem .noteInp:focus{outline:none;border-color:var(--teal);}
+.photoItem .pdel{position:absolute;top:8px;right:8px;width:24px;height:24px;border:none;border-radius:50%;
+  background:var(--cream);color:var(--dark);font-size:13px;font-weight:900;cursor:pointer;line-height:1;}
 
 /* stats */
 .stathead{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:14px;}
@@ -306,6 +324,18 @@ textarea{width:100%;border:2px solid var(--line);border-radius:14px;padding:12px
           <button class="saveLog" id="saveLog">送出今日回報</button>
           <div class="saved" id="savedMsg"></div>
 
+          <!-- 工地照片 -->
+          <div class="logcard" style="margin-top:18px;">
+            <div class="flabel">📷 工地照片</div>
+            <label class="photoAdd">
+              ＋ 拍照 / 選相片（可多張）
+              <input type="file" id="photoInput" accept="image/*" multiple hidden>
+            </label>
+            <div class="photoList" id="photoList"></div>
+            <button class="saveLog" id="uploadPhotos" style="display:none;margin-top:12px;">上傳 <span id="photoCount">0</span> 張照片</button>
+            <div class="saved" id="photoMsg"></div>
+          </div>
+
           <!-- 本月統計 -->
           <div class="logcard" style="margin-top:18px;">
             <div class="stathead"><b>本月出工統計</b><span id="statMonth">—</span></div>
@@ -357,6 +387,9 @@ textarea{width:100%;border:2px solid var(--line);border-radius:14px;padding:12px
 const CONFIG = {
   LIFF_ID: "2010379196-HX0BjAuO",
   API_BASE: "https://wenny-n8n-prod.zeabur.app/webhook",
+  // 照片走獨立的 Zeabur 程式碼服務（binary 不繞 n8n）。部署 eng-photo-service 後填這兩個：
+  PHOTO_API: "",     // 例：https://eng-photo.zeabur.app（結尾不要斜線）；留空時上傳鈕會提示尚未設定
+  PHOTO_SECRET: "",  // 跟 eng-photo-service 的 PHOTO_UPLOAD_SECRET 填同一組
 };
 
 /* ════════════ 全域狀態 ════════════ */
@@ -823,6 +856,113 @@ function renderLogList(){
     `<div class="logrow"><span class="d">${l.date.slice(5)}</span><span class="w">${WMETA[w].e}</span>
      <span class="p">${l.people} 人出班</span>${l.issue?`<span class="x">異常</span>`:""}</div>`);});
 }
+
+/* ════════════ 工地照片上傳 → eng-photo-service（Zeabur） ════════════ */
+const PHOTO_TAGS = ["施工前","施工中","施工後","問題紀錄","其他"]; // 跟服務端白名單對齊，改這裡也要改服務端
+let photoQueue = []; // {blob, url, tag, note}
+
+// 前端壓縮：長邊縮到 1600、JPEG 0.8（3–10MB → 約 300–800KB，關鍵防爆步驟）
+function compressImage(file){
+  return new Promise((resolve,reject)=>{
+    const img=new Image();
+    img.onload=()=>{
+      const max=1600; let w=img.naturalWidth, h=img.naturalHeight;
+      if(Math.max(w,h)>max){const r=max/Math.max(w,h);w=Math.round(w*r);h=Math.round(h*r);}
+      const c=document.createElement("canvas");c.width=w;c.height=h;
+      c.getContext("2d").drawImage(img,0,0,w,h);
+      URL.revokeObjectURL(img.src);
+      c.toBlob(b=>b?resolve(b):reject(new Error("compress")),"image/jpeg",0.8);
+    };
+    img.onerror=()=>{URL.revokeObjectURL(img.src);reject(new Error("decode"));};
+    img.src=URL.createObjectURL(file);
+  });
+}
+
+$("photoInput").onchange=async(e)=>{
+  const files=[...e.target.files]; e.target.value="";
+  for(const f of files){
+    if(!f.type.startsWith("image/")) continue;
+    try{ const blob=await compressImage(f);
+      photoQueue.push({blob,url:URL.createObjectURL(blob),tag:PHOTO_TAGS[0],note:""});
+    }catch(err){ console.error("壓縮失敗",err); }
+  }
+  renderPhotos();
+};
+
+function renderPhotos(){
+  const L=$("photoList"); L.innerHTML="";
+  photoQueue.forEach((p,i)=>{
+    const opts=PHOTO_TAGS.map(t=>`<option${t===p.tag?" selected":""}>${t}</option>`).join("");
+    const noteVal=p.note.replace(/"/g,"&quot;");
+    L.insertAdjacentHTML("beforeend",
+      `<div class="photoItem" data-i="${i}">
+        <img class="thumb" src="${p.url}">
+        <div class="pmeta">
+          <select class="tagSel">${opts}</select>
+          <input class="noteInp" placeholder="備註（選填，會進檔名）" value="${noteVal}">
+        </div>
+        <button class="pdel" title="移除">✕</button>
+      </div>`);
+  });
+  L.querySelectorAll(".photoItem").forEach(el=>{
+    const i=+el.dataset.i;
+    el.querySelector(".tagSel").onchange=ev=>photoQueue[i].tag=ev.target.value;
+    el.querySelector(".noteInp").oninput=ev=>photoQueue[i].note=ev.target.value;
+    el.querySelector(".pdel").onclick=()=>{URL.revokeObjectURL(photoQueue[i].url);photoQueue.splice(i,1);renderPhotos();};
+  });
+  $("photoCount").textContent=photoQueue.length;
+  $("uploadPhotos").style.display=photoQueue.length?"block":"none";
+}
+
+// 用 XHR 送 multipart，才能顯示整體上傳進度（fetch 沒有 upload progress）
+function xhrUpload(url,form,secret,onProg){
+  return new Promise((resolve,reject)=>{
+    const xhr=new XMLHttpRequest();
+    xhr.open("POST",url);
+    if(secret) xhr.setRequestHeader("X-Secret",secret);
+    xhr.upload.onprogress=e=>{ if(e.lengthComputable) onProg(Math.round(e.loaded/e.total*100)); };
+    xhr.onload=()=>{ try{ const d=JSON.parse(xhr.responseText);
+      (xhr.status>=200&&xhr.status<300&&d.ok)?resolve(d):reject(new Error(d.error||("HTTP "+xhr.status)));
+    }catch{ reject(new Error("HTTP "+xhr.status)); } };
+    xhr.onerror=()=>reject(new Error("network"));
+    xhr.send(form);
+  });
+}
+
+$("uploadPhotos").onclick=async()=>{
+  if(!CONFIG.PHOTO_API){
+    $("photoMsg").classList.add("err");
+    $("photoMsg").textContent="⚠️ 照片服務尚未設定（先部署 eng-photo-service 並填 CONFIG.PHOTO_API）";
+    return;
+  }
+  if(!photoQueue.length) return;
+  const S=SITES[curSiteId];
+  const form=new FormData();
+  form.append("payload",JSON.stringify({
+    siteId:S.id, siteName:S.name,
+    items:photoQueue.map(p=>({tag:p.tag,note:p.note.trim()})),
+  }));
+  photoQueue.forEach((p,i)=>form.append("photos",p.blob,`photo_${i}.jpg`));
+
+  $("uploadPhotos").disabled=true;
+  $("photoMsg").classList.remove("err");
+  $("photoMsg").textContent="上傳中… 0%";
+  try{
+    const data=await xhrUpload(CONFIG.PHOTO_API.replace(/\/$/,"")+"/upload",form,CONFIG.PHOTO_SECRET,
+      pct=>$("photoMsg").textContent="上傳中… "+pct+"%");
+    $("photoMsg").textContent=`✓ 已上傳 ${data.count} 張，歸檔到 Google Drive`;
+    photoQueue.forEach(p=>URL.revokeObjectURL(p.url));
+    photoQueue=[]; renderPhotos();
+    setTimeout(()=>$("photoMsg").textContent="",3000);
+  }catch(e){
+    console.error(e);
+    $("photoMsg").classList.add("err");
+    $("photoMsg").textContent="⚠️ 上傳失敗，照片還在，可再按一次重試";
+  }finally{ $("uploadPhotos").disabled=false; }
+};
+
+// 還有沒送出的照片就離開 → 提醒（照片只在記憶體，重整會消失）
+window.addEventListener("beforeunload",e=>{ if(photoQueue.length){ e.preventDefault(); e.returnValue=""; } });
 
 boot();
 </script>
