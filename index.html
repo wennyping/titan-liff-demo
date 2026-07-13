@@ -814,7 +814,7 @@ $("saveLog").onclick=async()=>{
   const payload={
     siteId:S.id, siteName:S.name, date:todayStr(),
     people:logPeople, weather:W2NOTION[logWeather],
-    issue:$("issue").value.trim(), by:USER.name,
+    issue:$("issue").value.trim(), by:USER.name, byUserId:USER.id,
   };
   $("saveLog").disabled=true;
   $("savedMsg").classList.remove("err");$("savedMsg").textContent="同步中…";
