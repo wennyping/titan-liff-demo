@@ -387,9 +387,9 @@ textarea{width:100%;border:2px solid var(--line);border-radius:14px;padding:12px
 const CONFIG = {
   LIFF_ID: "2010379196-HX0BjAuO",
   API_BASE: "https://wenny-n8n-prod.zeabur.app/webhook",
-  // 照片走獨立的 Zeabur 程式碼服務（binary 不繞 n8n）。部署 eng-photo-service 後填這兩個：
-  PHOTO_API: "",     // 例：https://eng-photo.zeabur.app（結尾不要斜線）；留空時上傳鈕會提示尚未設定
-  PHOTO_SECRET: "",  // 跟 eng-photo-service 的 PHOTO_UPLOAD_SECRET 填同一組
+  // 照片走獨立的 Zeabur 程式碼服務（binary 不繞 n8n）
+  PHOTO_API: "https://eng-photo.zeabur.app",
+  PHOTO_SECRET: "b91fc970551a308e69a715d59415920a3716a33ec3a2b55a",
 };
 
 /* ════════════ 全域狀態 ════════════ */
